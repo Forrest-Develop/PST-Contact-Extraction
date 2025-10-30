@@ -1,4 +1,114 @@
-﻿# PST Contacts Extractor GUI (Standalone, COM-safe)
+param([switch]$AcceptLicense)
+
+# ==================== PST Folder Browser (Outlook COM API) ====================
+function Get-OutlookApp {
+  try { return [Runtime.InteropServices.Marshal]::GetActiveObject("Outlook.Application") }
+  catch { return New-Object -ComObject Outlook.Application }
+}
+function Mount-PstStore([string]$pstPath) {
+  $ol = Get-OutlookApp
+  $ses = $ol.Session
+  $ses.AddStore($pstPath)
+  $store = $ses.Stores | Where-Object { $_.FilePath -eq $pstPath } | Select-Object -First 1
+  if (-not $store) { throw "Failed to mount PST: $pstPath" }
+  return $store
+}
+function Show-PstContactsFolderPicker([string]$pstPath) {
+  $store = Mount-PstStore $pstPath
+  $root  = $store.GetRootFolder()
+  $form = New-Object Windows.Forms.Form
+  $form.Text = "Select a Contacts Folder"
+  $form.StartPosition = 'CenterScreen'
+  $form.Size = New-Object Drawing.Size(700,520)
+  $tree = New-Object Windows.Forms.TreeView
+  $tree.Dock = 'Fill'
+  $tree.HideSelection = $false
+  $ok   = New-Object Windows.Forms.Button
+  $ok.Text = "Use Selected Folder"
+  $ok.Dock = 'Bottom'
+  $ok.Height = 40
+  $info = New-Object Windows.Forms.Label
+  $info.Text = "Bold = Contacts folders"
+  $info.Dock = 'Bottom'
+  $info.Padding = '5,5,5,5'
+  $info.AutoSize = $true
+  $rootNode = $tree.Nodes.Add($root.FolderPath, $store.DisplayName)
+  $rootNode.Tag = $root
+  $olContactItem = 2
+  function Add-Nodes($parentNode, $folder) {
+    $n = $parentNode.Nodes.Add($folder.FolderPath, $folder.Name)
+    $n.Tag = $folder
+    if ($folder.DefaultItemType -eq $olContactItem) {
+      $n.NodeFont = New-Object System.Drawing.Font($tree.Font, [System.Drawing.FontStyle]::Bold)
+    }
+    foreach ($sub in $folder.Folders) { Add-Nodes $n $sub }
+  }
+  foreach ($f in $root.Folders) { Add-Nodes $rootNode $f }
+  $rootNode.Expand()
+  $selected = $null
+  $ok.Add_Click({
+    if ($tree.SelectedNode -and $tree.SelectedNode.Tag) {
+      $selected = $tree.SelectedNode.Tag
+      $form.Close()
+    } else {
+      Show-Info "Please select a folder."
+    }
+  })
+  $form.Controls.Add($tree)
+  $form.Controls.Add($info)
+  $form.Controls.Add($ok)
+  $Global:SuppressPopups = $false
+[void]$form.ShowDialog()
+  return $selected
+}
+function Convert-OutlookContactToCsvRow([object]$c) {
+  [pscustomobject]@{
+    'First Name'              = $c.FirstName
+    'Middle Name'             = $c.MiddleName
+    'Last Name'               = $c.LastName
+    'Company'                 = $c.CompanyName
+    'Job Title'               = $c.JobTitle
+    'E-mail Address'          = $c.Email1Address
+    'E-mail 2 Address'        = $c.Email2Address
+    'E-mail 3 Address'        = $c.Email3Address
+    'Business Phone'          = $c.BusinessTelephoneNumber
+    'Home Phone'              = $c.HomeTelephoneNumber
+    'Mobile Phone'            = $c.MobileTelephoneNumber
+    'Business Street'         = $c.BusinessAddressStreet
+    'Business City'           = $c.BusinessAddressCity
+    'Business State'          = $c.BusinessAddressState
+    'Business Postal Code'    = $c.BusinessAddressPostalCode
+    'Business Country/Region' = $c.BusinessAddressCountry
+    'Home Street'             = $c.HomeAddressStreet
+    'Home City'               = $c.HomeAddressCity
+    'Home State'              = $c.HomeAddressState
+    'Home Postal Code'        = $c.HomeAddressPostalCode
+    'Home Country/Region'     = $c.HomeAddressCountry
+    'Other Street'            = $c.OtherAddressStreet
+    'Other City'              = $c.OtherAddressCity
+    'Other State'             = $c.OtherAddressState
+    'Other Postal Code'       = $c.OtherAddressPostalCode
+    'Other Country/Region'    = $c.OtherAddressCountry
+    'Notes'                   = $c.Body
+  }
+}
+function Export-OutlookContactsFolderToOutlookCsv([object]$contactsFolder, [string]$csvPath) {
+  $olItemClassContact = 40
+  $rows = New-Object System.Collections.Generic.List[object]
+  foreach ($item in @($contactsFolder.Items)) {
+    try {
+      if ($null -eq $item) { continue }
+      if ($item.Class -eq $olItemClassContact) {
+        $rows.Add( (Convert-OutlookContactToCsvRow $item) )
+      }
+    } catch {}
+  }
+  $rows | Export-Csv -NoTypeInformation -Encoding UTF8 -Path $csvPath
+  return $rows.Count
+}
+# ================== End PST Folder Browser (Outlook COM API) ==================
+
+# PST Contacts Extractor GUI (Standalone, COM-safe)
 # -------------------------------------------------------------
 # - Lets a user pick a .PST and a CSV path
 # - Uses Outlook COM to mount the PST temporarily and export contacts to an Outlook-friendly CSV
@@ -13,7 +123,6 @@
 # -------------------------------------------------------------
 
 # --- WinForms prerequisites ---
-param([switch]$AcceptLicense)
 
 # If you are on Windows PowerShell 5.1, -STA is default in the console.
 # If you run this with PowerShell 7 (pwsh), WinForms can behave poorly in MTA.
@@ -31,12 +140,28 @@ Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 [System.Windows.Forms.Application]::EnableVisualStyles()
 
+
+# ---- Popup wrapper to avoid stray modals during startup ----
+$Global:SuppressPopups = $true
+function Show-Info {
+    param(
+        [string]$Text,
+        [string]$Caption = $form.Text
+    )
+    if ($Global:SuppressPopups) {
+        try { Write-Log -Message $Text -Color 'Gray' } catch { Write-Host $Text }
+    } else {
+        [void][Windows.Forms.MessageBox]::Show($form, $Text, $Caption)
+    }
+}
+# ------------------------------------------------------------
 # --- Helper: always read files as UTF-8 correctly ---
 function Get-FileUtf8 {
     param([string]$Path)
     $bytes = [System.IO.File]::ReadAllBytes($Path)
     return [System.Text.Encoding]::UTF8.GetString($bytes)
 }
+# --- Outlook helpers ---
 
 function Get-LicenseText {
     $embedded = @"
@@ -174,10 +299,12 @@ function Show-LicenseWindow {
 }
 
 # Gate execution unless bypassed for trusted automation
+$licenseMarker = Join-Path $env:LOCALAPPDATA 'PSTContactsExtractor\license.accepted'
+if (-not $AcceptLicense) { if (Test-Path $licenseMarker) { $AcceptLicense = $true } }
 if (-not $AcceptLicense) {
     $ok = Show-LicenseWindow -Text (Get-LicenseText)
     if (-not $ok) { exit }
-}
+}`ntry { $dir = Split-Path -Parent $licenseMarker; if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }; Set-Content -Path $licenseMarker -Value (Get-Date).ToString('o') -Encoding ASCII } catch {}`n
 #endregion ===== END LICENSE / TERMS MODAL =====
 
 # -------------------------------------------------------------
@@ -399,129 +526,6 @@ function Export-PstContactsToOutlookCsv {
         [GC]::WaitForPendingFinalizers()
     }
 }
-# ==================== PST Folder Browser (Outlook COM API) ====================
-
-function Get-OutlookApp {
-  try { return [Runtime.InteropServices.Marshal]::GetActiveObject("Outlook.Application") }
-  catch { return New-Object -ComObject Outlook.Application }
-}
-
-function Mount-PstStore([string]$pstPath) {
-  $ol = Get-OutlookApp
-  $ses = $ol.Session
-  $ses.AddStore($pstPath)
-  $store = $ses.Stores | Where-Object { $_.FilePath -eq $pstPath } | Select-Object -First 1
-  if (-not $store) { throw "Failed to mount PST: $pstPath" }
-  return $store
-}
-
-Add-Type -AssemblyName System.Windows.Forms
-Add-Type -AssemblyName System.Drawing
-
-function Show-PstContactsFolderPicker([string]$pstPath) {
-  $store = Mount-PstStore $pstPath
-  $root  = $store.GetRootFolder()
-
-  $form = New-Object Windows.Forms.Form
-  $form.Text = "Select a Contacts Folder"
-  $form.StartPosition = 'CenterScreen'
-  $form.Size = New-Object Drawing.Size(700,520)
-
-  $tree = New-Object Windows.Forms.TreeView
-  $tree.Dock = 'Fill'
-  $tree.HideSelection = $false
-
-  $ok   = New-Object Windows.Forms.Button
-  $ok.Text = "Use Selected Folder"
-  $ok.Dock = 'Bottom'
-  $ok.Height = 40
-
-  $info = New-Object Windows.Forms.Label
-  $info.Text = "Bold = Contacts folders"
-  $info.Dock = 'Bottom'
-  $info.Padding = '5,5,5,5'
-  $info.AutoSize = $true
-
-  $rootNode = $tree.Nodes.Add($root.FolderPath, $store.DisplayName)
-  $rootNode.Tag = $root
-
-  $olContactItem = 2
-  function Add-Nodes($parentNode, $folder) {
-    $n = $parentNode.Nodes.Add($folder.FolderPath, $folder.Name)
-    $n.Tag = $folder
-    if ($folder.DefaultItemType -eq $olContactItem) {
-      $n.NodeFont = New-Object System.Drawing.Font($tree.Font, [System.Drawing.FontStyle]::Bold)
-    }
-    foreach ($sub in $folder.Folders) { Add-Nodes $n $sub }
-  }
-  foreach ($f in $root.Folders) { Add-Nodes $rootNode $f }
-  $rootNode.Expand()
-
-  $selected = $null
-  $ok.Add_Click({
-    if ($tree.SelectedNode -and $tree.SelectedNode.Tag) {
-      $selected = $tree.SelectedNode.Tag
-      $form.Close()
-    } else {
-      [Windows.Forms.MessageBox]::Show("Please select a folder.")
-    }
-  })
-
-  $form.Controls.Add($tree)
-  $form.Controls.Add($info)
-  $form.Controls.Add($ok)
-  [void]$form.ShowDialog()
-  return $selected
-}
-
-function Convert-OutlookContactToCsvRow([object]$c) {
-  [pscustomobject]@{
-    'First Name'              = $c.FirstName
-    'Middle Name'             = $c.MiddleName
-    'Last Name'               = $c.LastName
-    'Company'                 = $c.CompanyName
-    'Job Title'               = $c.JobTitle
-    'E-mail Address'          = $c.Email1Address
-    'E-mail 2 Address'        = $c.Email2Address
-    'E-mail 3 Address'        = $c.Email3Address
-    'Business Phone'          = $c.BusinessTelephoneNumber
-    'Home Phone'              = $c.HomeTelephoneNumber
-    'Mobile Phone'            = $c.MobileTelephoneNumber
-    'Business Street'         = $c.BusinessAddressStreet
-    'Business City'           = $c.BusinessAddressCity
-    'Business State'          = $c.BusinessAddressState
-    'Business Postal Code'    = $c.BusinessAddressPostalCode
-    'Business Country/Region' = $c.BusinessAddressCountry
-    'Home Street'             = $c.HomeAddressStreet
-    'Home City'               = $c.HomeAddressCity
-    'Home State'              = $c.HomeAddressState
-    'Home Postal Code'        = $c.HomeAddressPostalCode
-    'Home Country/Region'     = $c.HomeAddressCountry
-    'Other Street'            = $c.OtherAddressStreet
-    'Other City'              = $c.OtherAddressCity
-    'Other State'             = $c.OtherAddressState
-    'Other Postal Code'       = $c.OtherAddressPostalCode
-    'Other Country/Region'    = $c.OtherAddressCountry
-    'Notes'                   = $c.Body
-  }
-}
-
-function Export-OutlookContactsFolderToOutlookCsv([object]$contactsFolder, [string]$csvPath) {
-  $olItemClassContact = 40
-  $rows = New-Object System.Collections.Generic.List[object]
-  foreach ($item in @($contactsFolder.Items)) {
-    try {
-      if ($null -eq $item) { continue }
-      if ($item.Class -eq $olItemClassContact) {
-        $rows.Add( (Convert-OutlookContactToCsvRow $item) )
-      }
-    } catch {}
-  }
-  $rows | Export-Csv -NoTypeInformation -Encoding UTF8 -Path $csvPath
-  return $rows.Count
-}
-# =====================================================================
-
 
 # -------------------------------------------------------------
 # GUI
@@ -601,15 +605,15 @@ $btnRun.Location = New-Object System.Drawing.Point(18,335)
 $btnRun.Width = 170
 $btnRun.Enabled = $false
 
-$ManualChooseFolderCheckbox = New-Object System.Windows.Forms.CheckBox
-$ManualChooseFolderCheckbox.Text = "Manually choose contacts folder before export"
-$ManualChooseFolderCheckbox.AutoSize = $true
-$ManualChooseFolderCheckbox.Location = New-Object System.Drawing.Point(188, 335)
-$Form.Controls.Add($ManualChooseFolderCheckbox)
-
+# --- Checkbox: manually choose contacts folder before export ---
+$chkManualVerify = New-Object System.Windows.Forms.CheckBox
+$chkManualVerify.Text = "Manually choose contacts folder before export"
+$chkManualVerify.AutoSize = $true
+$chkManualVerify.Location = New-Object System.Drawing.Point(($btnRun.Right + 15), ($btnRun.Top + 4))
+# --- End checkbox ---
 $btnOpenOut = New-Object System.Windows.Forms.Button
 $btnOpenOut.Text = 'Open Output Folder'
-$btnOpenOut.Location = New-Object System.Drawing.Point(358,335)
+$btnOpenOut.Location = New-Object System.Drawing.Point(200,335)
 $btnOpenOut.Width = 170
 $btnOpenOut.Enabled = $false
 
@@ -694,22 +698,29 @@ $btnRun.Add_Click({
         Write-Log -Message " CSV: $csvPath"
 
         $sw = [System.Diagnostics.Stopwatch]::StartNew()
-        $err = $null
-        try {
-            $output = & Export-PstContactsToOutlookCsv -PstPath $pstPath -OutputCsv $csvPath -ErrorAction Stop *>&1
-            foreach ($o in $output) {
-                if ($o -is [System.Management.Automation.ErrorRecord]) {
-                    Write-Log -Message ($o.ToString()) -Color 'Crimson'
-                } elseif ($o -is [System.Management.Automation.VerboseRecord]) {
-                    Write-Log -Message ($o.ToString()) -Color 'Gray'
-                } else {
-                    Write-Log -Message (($o | Out-String).Trim())
-                }
+$err = $null
+try {
+    if ($chkManualVerify.Checked) {
+        $folder = Show-PstContactsFolderPicker -pstPath $pstPath
+        if (-not $folder) { throw "No folder selected." }
+        $count = Export-OutlookContactsFolderToOutlookCsv -contactsFolder $folder -csvPath $csvPath
+        Write-Log -Message "Manual export: $count contacts from '$($folder.Name)'" -Color 'SeaGreen'
+    } else {
+        $output = & Export-PstContactsToOutlookCsv -PstPath $pstPath -OutputCsv $csvPath -ErrorAction Stop *>&1
+        foreach ($o in $output) {
+            if ($o -is [System.Management.Automation.ErrorRecord]) {
+                Write-Log -Message ($o.ToString()) -Color 'Crimson'
+            } elseif ($o -is [System.Management.Automation.VerboseRecord]) {
+                Write-Log -Message ($o.ToString()) -Color 'Gray'
+            } else {
+                Write-Log -Message ($o | Out-String)
             }
-        } catch {
-            $err = $_
         }
-        $sw.Stop()
+    }
+} catch {
+    $err = $_
+}
+$sw.Stop()
 
         if ($err) {
             Write-Log -Message "Export failed: $($err.Exception.Message)" -Color 'Crimson'
@@ -727,7 +738,7 @@ $btnRun.Add_Click({
     }
 })
 
-$form.Controls.AddRange(@(
+$chkManualVerify; $form.Controls.AddRange(@(
     $lblPst, $txtPst, $btnPst,
     $lblCsv, $txtCsv, $btnCsv,
     $logBox,
