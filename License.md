@@ -1,4 +1,4 @@
-# PST_Contacts_Extractor_GUI_1.0.0
+﻿# PST_Contacts_Extractor_GUI_1.0.0
 
 ### Overview
 **PST_Contacts_Extractor_GUI_1.0.0** is a standalone PowerShell script that provides a simple Windows GUI for extracting all contacts from an Outlook PST file into a CSV formatted for direct import into Outlook 365 or Outlook.com.

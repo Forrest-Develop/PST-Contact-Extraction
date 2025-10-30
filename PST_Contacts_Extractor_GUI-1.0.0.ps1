@@ -1,4 +1,4 @@
-# PST Contacts Extractor GUI (Standalone, COM-safe)
+﻿# PST Contacts Extractor GUI (Standalone, COM-safe)
 # -------------------------------------------------------------
 # - Lets a user pick a .PST and a CSV path
 # - Uses Outlook COM to mount the PST temporarily and export contacts to an Outlook-friendly CSV
@@ -12,8 +12,173 @@
 # - PowerShell backtick for line continuation
 # -------------------------------------------------------------
 
+# --- WinForms prerequisites ---
+param([switch]$AcceptLicense)
+
+# If you are on Windows PowerShell 5.1, -STA is default in the console.
+# If you run this with PowerShell 7 (pwsh), WinForms can behave poorly in MTA.
+# Enforce STA for reliability on WinForms/COM:
+if ([System.Threading.Thread]::CurrentThread.ApartmentState -ne 'STA') {
+    Write-Host "Re-launching in STA mode for WinForms compatibility..." -ForegroundColor Yellow
+    $hostExe = (Get-Process -Id $PID).Path
+    $args    = '-NoProfile -ExecutionPolicy Bypass -STA -File "' + $PSCommandPath + '"'
+    if ($AcceptLicense) { $args += ' -AcceptLicense' }
+    Start-Process -FilePath $hostExe -ArgumentList $args | Out-Null
+    exit
+}
+
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
+[System.Windows.Forms.Application]::EnableVisualStyles()
+
+# --- Helper: always read files as UTF-8 correctly ---
+function Get-FileUtf8 {
+    param([string]$Path)
+    $bytes = [System.IO.File]::ReadAllBytes($Path)
+    return [System.Text.Encoding]::UTF8.GetString($bytes)
+}
+
+function Get-LicenseText {
+    $embedded = @"
+SOFTWARE LICENSE AND TERMS OF USE
+---------------------------------
+Copyright (c) 2025 Benjamin Forrest
+All Rights Reserved. Property of Benjamin Forrest.
+
+Usage of this software is limited to the author (Benjamin Forrest)
+and authorized personnel of Power Auto Group for internal use only.
+Redistribution, modification, or alteration of this software in any form
+is strictly prohibited without explicit written permission from the author.
+
+By continuing, you acknowledge that:
+  - You are an authorized user.
+  - You agree not to distribute, modify, or reverse-engineer this software.
+  - You understand this tool is provided as-is without warranty of any kind.
+"@
+
+    try {
+        $here = Split-Path -Parent $PSCommandPath
+        $licenseFile = Join-Path $here 'LICENSE.txt'
+        if (Test-Path $licenseFile) {
+            return [IO.File]::ReadAllText($licenseFile)
+        }
+    } catch { }
+    return $embedded
+}
+
+function Show-LicenseWindow {
+    param([string]$Text)
+
+    # ---- Dialog ----
+    $dlg = New-Object System.Windows.Forms.Form
+    $dlg.Text = "License Agreement"
+    $dlg.StartPosition = 'CenterScreen'
+    $dlg.Size = New-Object System.Drawing.Size(760, 560)
+    $dlg.MinimizeBox = $false
+    $dlg.MaximizeBox = $false
+    $dlg.TopMost = $true
+    $dlg.FormBorderStyle = 'FixedDialog'
+    $dlg.ShowInTaskbar = $true
+    $dlg.KeyPreview = $true
+
+    # ---- Header ----
+    $lbl = New-Object System.Windows.Forms.Label
+    $lbl.Text = "Please review and accept the license to continue."
+    $lbl.AutoSize = $false
+    $lbl.Dock = 'Top'
+    $lbl.Height = 36
+    $lbl.TextAlign = 'MiddleLeft'
+    $lbl.Padding = '10,0,0,0'
+    $lbl.Font = New-Object System.Drawing.Font("Segoe UI", 10, [System.Drawing.FontStyle]::Bold)
+
+    # ---- Bottom panel (hosts checkbox + buttons) ----
+    $bottom = New-Object System.Windows.Forms.Panel
+    $bottom.Dock = 'Bottom'
+    $bottom.Height = 76
+    $bottom.Padding = '10,10,10,10'
+    $bottom.BackColor = [System.Drawing.Color]::FromArgb(245,245,245)
+
+    $chk = New-Object System.Windows.Forms.CheckBox
+    $chk.Text = "I have read and agree to the License and Terms of Use."
+    $chk.AutoSize = $true
+    $chk.Location = New-Object System.Drawing.Point(10, 12)
+
+    $btnAccept = New-Object System.Windows.Forms.Button
+    $btnAccept.Text = "Accept"
+    $btnAccept.Enabled = $false
+    $btnAccept.Width = 100
+    $btnAccept.Height = 30
+    $btnAccept.Anchor = 'Top,Right'
+
+    $btnDecline = New-Object System.Windows.Forms.Button
+    $btnDecline.Text = "Decline"
+    $btnDecline.Width = 100
+    $btnDecline.Height = 30
+    $btnDecline.Anchor = 'Top,Right'
+
+    # Position buttons **relative to bottom panel**, not the dialog
+    $buttonGap   = 10
+    $rightMargin = 10
+    $topMargin   = 35
+    function Set-ButtonPositions {
+        $declineX = $bottom.ClientSize.Width - $rightMargin - $btnDecline.Width
+        $acceptX  = $declineX - $buttonGap - $btnAccept.Width
+        $btnDecline.Location = New-Object System.Drawing.Point($declineX, $topMargin)
+        $btnAccept.Location  = New-Object System.Drawing.Point($acceptX,  $topMargin)
+    }
+    $bottom.Add_Resize({ Set-ButtonPositions })
+
+    # ---- Rich text (license body) ----
+    $rtb = New-Object System.Windows.Forms.RichTextBox
+    $rtb.ReadOnly = $true
+    $rtb.Multiline = $true
+    $rtb.ScrollBars = 'Vertical'
+    $rtb.BorderStyle = 'FixedSingle'
+    $rtb.DetectUrls = $false
+    $rtb.Font = New-Object System.Drawing.Font("Consolas", 10)
+    $rtb.Dock = 'Fill'
+    $rtb.Text = $Text
+
+    # ---- Wire events ----
+    $chk.Add_CheckedChanged({ $btnAccept.Enabled = $chk.Checked })
+    $btnAccept.Add_Click({ $dlg.DialogResult = [System.Windows.Forms.DialogResult]::OK; $dlg.Close() })
+    $btnDecline.Add_Click({ $dlg.DialogResult = [System.Windows.Forms.DialogResult]::Cancel; $dlg.Close() })
+
+    $dlg.Add_KeyDown({
+        param($s,$e)
+        if ($e.KeyCode -eq 'Escape') { $btnDecline.PerformClick() }
+    })
+    $dlg.AcceptButton = $btnAccept
+    $dlg.CancelButton = $btnDecline
+
+    # ---- Add controls in a safe dock order ----
+    # Top, Bottom, then Fill to avoid overlap issues
+    $dlg.SuspendLayout()
+    $bottom.SuspendLayout()
+    $bottom.Controls.Add($chk)
+    $bottom.Controls.Add($btnAccept)
+    $bottom.Controls.Add($btnDecline)
+
+    $dlg.Controls.Add($rtb)     # Fill
+    $dlg.Controls.Add($bottom)  # Bottom
+    $dlg.Controls.Add($lbl)     # Top
+    $dlg.ResumeLayout($false)
+    $bottom.ResumeLayout($false)
+
+    # Initial position for buttons
+    Set-ButtonPositions
+
+    # ---- Show modal ----
+    $result = $dlg.ShowDialog()
+    return ($result -eq [System.Windows.Forms.DialogResult]::OK)
+}
+
+# Gate execution unless bypassed for trusted automation
+if (-not $AcceptLicense) {
+    $ok = Show-LicenseWindow -Text (Get-LicenseText)
+    if (-not $ok) { exit }
+}
+#endregion ===== END LICENSE / TERMS MODAL =====
 
 # -------------------------------------------------------------
 # Exporter: Export-PstContactsToOutlookCsv
@@ -261,9 +426,11 @@ function Write-Log {
 $form = New-Object System.Windows.Forms.Form
 $form.Text = 'PST Contacts Extractor (Standalone)'
 $form.StartPosition = 'CenterScreen'
-$form.Size = New-Object System.Drawing.Size(720,420)
-$form.MinimumSize = $form.Size
+$form.MinimumSize = New-Object System.Drawing.Size(720, 480)
 $form.MaximizeBox = $true
+$form.AutoSize = $true
+$form.AutoSizeMode = 'GrowAndShrink'
+
 
 $lblPst = New-Object System.Windows.Forms.Label
 $lblPst.Text = 'PST file:'
@@ -331,6 +498,20 @@ $csvDialog.Title  = 'Choose where to save the CSV'
 $csvDialog.AddExtension = $true
 $csvDialog.DefaultExt   = 'csv'
 $csvDialog.FileName = 'contacts_outlook365.csv'
+
+# ===== Footer Label =====
+$COPY = [char]0x00A9
+$footerLabel = New-Object System.Windows.Forms.Label
+$footerLabel.AutoSize = $false
+$footerLabel.Dock = [System.Windows.Forms.DockStyle]::Bottom
+$footerLabel.Height = 40
+$footerLabel.TextAlign = 'MiddleCenter'
+$footerLabel.BackColor = [System.Drawing.Color]::FromArgb(245,245,245)
+$footerLabel.ForeColor = [System.Drawing.Color]::Gray
+$footerLabel.Font = New-Object System.Drawing.Font("Segoe UI", 9, [System.Drawing.FontStyle]::Italic)
+$footerLabel.Text = "$COPY 2025 Benjamin Forrest | All rights reserved | Internal Use Only | Redistribution or modification prohibited."
+
+$form.Controls.Add($footerLabel)
 
 function Update-RunEnabled {
     $btnRun.Enabled = ([string]::IsNullOrWhiteSpace($txtPst.Text) -eq $false) -and `
