@@ -424,6 +424,7 @@ function Write-Log {
 }
 
 $form = New-Object System.Windows.Forms.Form
+$Form.Icon = [System.Drawing.Icon]::ExtractAssociatedIcon((Resolve-Path ".\app.ico"))
 $form.Text = 'PST Contacts Extractor (Standalone)'
 $form.StartPosition = 'CenterScreen'
 $form.MinimumSize = New-Object System.Drawing.Size(720, 480)
