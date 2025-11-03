@@ -1,96 +1,48 @@
-﻿# PST_Contacts_Extractor_GUI_1.0.0
+﻿# PST_Contacts_Extractor_GUI— Version 1.3.8
 
-### Overview
-**PST_Contacts_Extractor_GUI_1.0.0** is a standalone PowerShell script that provides a simple Windows GUI for extracting all contacts from an Outlook PST file into a CSV formatted for direct import into Outlook 365 or Outlook.com.
-
-The script uses Outlook's COM interface to temporarily mount a PST file, traverse all Contact folders, and export the contents into a UTF-8 BOM CSV. It automatically unmounts the PST when finished.
-
----
-
-### Features
-- **Graphical Interface** – Select the PST file and the CSV save location using standard Windows dialogs.
-- **Outlook 365 Compatible CSV** – Output file matches Outlook’s expected import format.
-- **Automatic PST Mount/Unmount** – Safely attaches the PST in Outlook, then removes it after export.
-- **UTF-8 Encoding with BOM** – Ensures proper import of non-ASCII characters.
-- **Comprehensive Field Mapping** – Includes all standard Outlook contact fields (email, phone numbers, addresses, etc.).
+## Copyright and Ownership
+Copyright © 2025 Benjamin Forrest  
+All Rights Reserved.  
+This software is the sole property of **Benjamin Forrest**.
 
 ---
 
-### Requirements
-- Windows 10 or later
-- Microsoft Outlook (desktop version) installed
-- PowerShell 5.1 or later (Windows PowerShell, not PowerShell Core)
+## Authorized Use
+Use of this software is **strictly limited** to:
+- The **Author (Benjamin Forrest)**, and  
+- **Power Auto Group** for authorized internal business operations only.
+
+No other person or organization is permitted to use, distribute, or modify this software without the **express written permission** of the author.
 
 ---
 
-### Usage
-1. **Save** the script as:
-   ```
-   PST_Contacts_Extractor_GUI_1.0.0.ps1
-   ```
+## License Terms
+1. **Redistribution Prohibited**  
+   Redistribution, copying, or repackaging of this software, in whole or in part, is not allowed without prior written consent from the author.
 
-2. **Run** it in PowerShell:
-   ```powershell
-   powershell -ExecutionPolicy Bypass -File "PST_Contacts_Extractor_GUI_1.0.0.ps1"
-   ```
+2. **Modification Prohibited**  
+   Alteration, decompilation, reverse engineering, or derivative works based on this software are strictly prohibited.
 
-3. **Choose** your `.pst` file when prompted.
+3. **Internal Use Only**  
+   This software is intended solely for internal contact extraction and management purposes within Power Auto Group or by the author personally.
 
-4. **Select** where to save your exported `contacts_outlook365.csv` file.
-
-5. **Click** **Extract Contacts**.
-
-6. When finished, click **Open Output Folder** to view the results.
+4. **No Warranty**  
+   The software is provided *“as is”* without any warranty, express or implied, including but not limited to the implied warranties of merchantability or fitness for a particular purpose.  
+   The author shall not be liable for any direct, indirect, incidental, or consequential damages arising from the use or inability to use this software.
 
 ---
 
-### Output
-- The script generates a CSV file formatted for Outlook import.
-- Encoding: UTF-8 with BOM
-- Sample header:
-  ```csv
-  Title,First Name,Middle Name,Last Name,Suffix,Company,Department,Job Title,E-mail Address,E-mail 2 Address,...
-  ```
+## Dependencies
+This application requires:
+- Microsoft Windows 10 or 11  
+- Microsoft Outlook (desktop version, installed)  
+
+No third-party libraries, frameworks, or internet connectivity are required beyond Outlook.
 
 ---
 
-### Notes
-- The script does **not** modify your PST or contacts.
-- Outlook must be installed (it uses MAPI/COM from Outlook).
-- If you encounter an error about `System.__ComObject`, ensure Outlook is fully installed and configured at least once.
-- All COM objects are safely released to prevent Outlook lockups.
-- The `$HOME` environment variable is never overwritten.
+## Version Notice
+This license applies to **PST_Contacts_Extractor_GUI version 1.3.8**, distributed as a **standalone executable (.exe)** built from PowerShell source via **ps2exe**.  
+Previous script-based versions (1.0.0–1.3.7) remain governed by their respective licenses.
 
 ---
-
-### Known Limitations
-- Must run under a Windows account with Outlook profile access.
-- Cannot process password-protected PSTs.
-- Does not support non-contact items (only Contact folders are scanned).
-
----
-
-### Version History
-**1.0.0**  
-Initial stable release (GUI-based, COM-safe build)
-- Removed strict folder type casting to fix `System.__ComObject` conversion error
-- Improved color-safe logging system
-- Added BOM-safe CSV writer
-- General error handling and status reporting
-
----
-
-### License
-Copyright (c) 2025 Benjamin Forrest. All rights reserved.
-
-This software is the property of **Benjamin Forrest** and is licensed for internal use by **Power Auto Group** only. Redistribution, modification, copying, or alteration in any form, whole or in part, is strictly prohibited without the express written permission of the author.
-
-Usage is limited to the author and to Power Auto Group for authorized internal operations. No part of this software may be incorporated into other tools, scripts, or commercial products without prior approval.
-
----
-
-### Author
-Benjamin Forrest  
-IT Department, Power Auto Group  
-October 2025
-
