@@ -79,9 +79,9 @@ Encoding: **UTF-8 with BOM** (compatible with Outlook import)
 ---
 
 ## 🪪 License
-Copyright (c) 2025 **Benjamin Forrest**. All rights reserved.
+Copyright (c) 2025 **ForrestDev**. All rights reserved.
 
-This software is the property of **Benjamin Forrest** and is licensed for internal use by **Power Auto Group** only.
+This software is the property of **ForrestDev** and is licensed for internal use by **Power Auto Group** only.
 
 Redistribution, modification, copying, or alteration in any form, whole or in part, is strictly prohibited without express written permission from the author.
 
@@ -90,7 +90,6 @@ Usage is limited to the author and to Power Auto Group for authorized internal o
 ---
 
 ## 👤 Author
-**Benjamin Forrest**  
-IT Department – Power Auto Group  
-October 2025
+**ForrestDev**  
+2025
 

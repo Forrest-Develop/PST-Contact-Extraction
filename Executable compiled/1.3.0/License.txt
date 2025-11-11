@@ -81,16 +81,15 @@ Initial stable release (GUI-based, COM-safe build)
 ---
 
 ### License
-Copyright (c) 2025 Benjamin Forrest. All rights reserved.
+Copyright (c) 2025 ForrestDev. All rights reserved.
 
-This software is the property of **Benjamin Forrest** and is licensed for internal use by **Power Auto Group** only. Redistribution, modification, copying, or alteration in any form, whole or in part, is strictly prohibited without the express written permission of the author.
+This software is the property of **ForrestDev** and is licensed for internal use by **Power Auto Group** only. Redistribution, modification, copying, or alteration in any form, whole or in part, is strictly prohibited without the express written permission of the author.
 
 Usage is limited to the author and to Power Auto Group for authorized internal operations. No part of this software may be incorporated into other tools, scripts, or commercial products without prior approval.
 
 ---
 
 ### Author
-Benjamin Forrest  
-IT Department, Power Auto Group  
-October 2025
+ForrestDev  
+2025
 

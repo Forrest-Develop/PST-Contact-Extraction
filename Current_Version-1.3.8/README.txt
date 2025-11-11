@@ -1,10 +1,10 @@
 PST CONTACTS EXTRACTOR GUI - VERSION 1.3.8
 ------------------------------------------
 
-Author: Benjamin Forrest
-Copyright: © 2025 Benjamin Forrest
-Software Property of: Benjamin Forrest
-Usage: Internal use only by Power Auto Group and the Author (Benjamin Forrest)
+Author: ForrestDev
+Copyright: © 2025 ForrestDev
+Software Property of: ForrestDev
+Usage: Internal use only by Power Auto Group and the Author (ForrestDev)
 License: Redistribution or alteration of this software in any form is strictly prohibited without written permission from the author.
 
 
@@ -65,7 +65,7 @@ NOTES AND TROUBLESHOOTING
 --------------------------
 - If the icon does not appear, ensure app.ico is embedded in the .exe.
 - Do not rename or modify the executable or internal resources.
-- Authorized for use by Power Auto Group and Benjamin Forrest only.
+- Authorized for use by Power Auto Group and ForrestDev Forrest only.
 
 
 VERSION HISTORY

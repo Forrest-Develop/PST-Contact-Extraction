@@ -1,15 +1,15 @@
 ﻿# PST_Contacts_Extractor_GUI— Version 1.3.8
 
 ## Copyright and Ownership
-Copyright © 2025 Benjamin Forrest  
+Copyright © 2025 ForrestDev  
 All Rights Reserved.  
-This software is the sole property of **Benjamin Forrest**.
+This software is the sole property of **ForrestDev**.
 
 ---
 
 ## Authorized Use
 Use of this software is **strictly limited** to:
-- The **Author (Benjamin Forrest)**, and  
+- The **Author (ForrestDev)**, and  
 - **Power Auto Group** for authorized internal business operations only.
 
 No other person or organization is permitted to use, distribute, or modify this software without the **express written permission** of the author.

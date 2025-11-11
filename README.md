@@ -1,9 +1,9 @@
 # 📦 PST Contacts Extractor GUI — Version 1.3.8
 
-**Author:** Benjamin Forrest  
-**Copyright:** © 2025 Benjamin Forrest  
-**Software Property of:** Benjamin Forrest  
-**Usage:** Internal use only by Power Auto Group and the Author (Benjamin Forrest)  
+**Author:** ForrestDev  
+**Copyright:** © 2025 ForrestDev  
+**Software Property of:** ForrestDev  
+**Usage:** Internal use only by Power Auto Group and the Author (ForrestDev)  
 **License:** Redistribution or alteration of this software in any form is strictly prohibited without written permission from the author.
 
 ---
@@ -89,7 +89,7 @@ Exports `contacts_outlook365.csv` with the following columns:
 - If the icon fails to appear, ensure the executable was built with the embedded `app.ico`.  
 - The `.exe` version resolves previous icon and path binding issues seen in earlier PowerShell builds.  
 - Do **not** rename or modify the executable or its internal resources.  
-- Authorized for internal use only by **Power Auto Group** and **Benjamin Forrest**.
+- Authorized for internal use only by **Power Auto Group** and **ForrestDev**.
 
 ---
 

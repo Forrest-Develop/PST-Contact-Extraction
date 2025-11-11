@@ -218,10 +218,10 @@ function Get-LicenseText {
     $embedded = @"
 SOFTWARE LICENSE AND TERMS OF USE
 ---------------------------------
-Copyright (c) 2025 Benjamin Forrest
-All Rights Reserved. Property of Benjamin Forrest.
+Copyright (c) 2025 ForrestDev
+All Rights Reserved. Property of ForrestDev.
 
-Usage of this software is limited to the author (Benjamin Forrest)
+Usage of this software is limited to the author (ForrestDev)
 and authorized personnel of Power Auto Group for internal use only.
 Redistribution, modification, or alteration of this software in any form
 is strictly prohibited without explicit written permission from the author.
@@ -694,7 +694,7 @@ catch {
     Write-Log -Message "Failed to load app.ico: $($_.Exception.Message)" -Color 'Crimson'
 }
 
-$form.Text = 'PST Contacts Extractor (Standalone)'
+$form.Text = 'PST Contacts Extractor'
 $form.StartPosition = 'CenterScreen'
 $form.MinimumSize = New-Object System.Drawing.Size(720, 480)
 $form.MaximizeBox = $true
@@ -784,7 +784,7 @@ $footerLabel.TextAlign = 'MiddleCenter'
 $footerLabel.BackColor = [System.Drawing.Color]::FromArgb(245,245,245)
 $footerLabel.ForeColor = [System.Drawing.Color]::Gray
 $footerLabel.Font = New-Object System.Drawing.Font("Segoe UI", 9, [System.Drawing.FontStyle]::Italic)
-$footerLabel.Text = "$COPY 2025 Benjamin Forrest | All rights reserved | Internal Use Only | Redistribution or modification prohibited."
+$footerLabel.Text = "$COPY 2025 ForrestDe | All rights reserved | Internal Use Only | Redistribution or modification prohibited."
 
 $form.Controls.Add($footerLabel)
 
