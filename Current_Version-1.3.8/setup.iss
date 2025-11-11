@@ -3,7 +3,7 @@
 ; -------------------------------------------
 #define MyAppName        "PST Contacts Extractor"
 #define MyAppVersion     "1.3.8"
-#define MyAppPublisher   "Benjamin Forrest"
+#define MyAppPublisher   "ForrestDev"
 #define MyAppExeName     "PSTContactExtractor_1.3.8.exe"
 
 [Setup]
